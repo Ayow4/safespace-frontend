@@ -1,11 +1,12 @@
 // src/pages/AdminDashboard.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Tv, Ban, AlertTriangle } from "lucide-react";
+import { Users, Tv, Ban, AlertTriangle, StampIcon } from "lucide-react";
 import ManageUsers from "../components/admin/ManageUsers";
 import ManageChannels from "../components/admin/ManageChannels";
 import ManageBannedWords from "../components/admin/ManageBannedWords";
 import ManageReports from "../components/admin/ManageReports";
+import ManageApproval from "../components/admin/ManageApproval";
 import "../styles/Admin.css";
 
 export default function AdminDashboard() {
@@ -32,9 +33,13 @@ export default function AdminDashboard() {
           <li className={activeTab === "banned" ? "active" : ""} onClick={() => setActiveTab("banned")}>
             <Ban size={18} /> Banned Words
           </li>
+          <li className={activeTab === "approval" ? "active" : ""} onClick={() => setActiveTab("approval")}>
+            <StampIcon size={18} /> Approval
+          </li>
           <li className={activeTab === "reports" ? "active" : ""} onClick={() => setActiveTab("reports")}>
             <AlertTriangle size={18} /> Reports
           </li>
+          
         </ul>
 
         <button onClick={handleLogout} className="logout-btn">Logout</button>
@@ -45,6 +50,7 @@ export default function AdminDashboard() {
         {activeTab === "channels" && <ManageChannels />}
         {activeTab === "banned" && <ManageBannedWords />}
         {activeTab === "reports" && <ManageReports />}
+        {activeTab === "approval" && <ManageApproval />}
           
       </main>
     </div>

@@ -6,6 +6,7 @@ import "../styles/Auth.css";
 export default function LoginRegister({ isLogin: defaultIsLogin = true }) {
   const [isLogin, setIsLogin] = useState(defaultIsLogin);
   const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
 
@@ -14,6 +15,10 @@ export default function LoginRegister({ isLogin: defaultIsLogin = true }) {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
   };
 
   const handleSubmit = async (e) => {
@@ -26,20 +31,27 @@ export default function LoginRegister({ isLogin: defaultIsLogin = true }) {
           password: form.password,
         });
 
-        // Save token + user info
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
 
         setMessage("✅ Login successful! Redirecting...");
         setIsError(false);
 
-        // Redirect based on role
         const redirectPath =
           res.data.user?.role === "admin" ? "/admin" : "/chatroom";
         setTimeout(() => navigate(redirectPath), 1000);
       } else {
-        // --- REGISTER ---
-        await axios.post(`${API_URL}/auth/register`, form);
+        // --- REGISTER with image ---
+        const formData = new FormData();
+        formData.append("username", form.username);
+        formData.append("email", form.email);
+        formData.append("password", form.password);
+        if (file) formData.append("loadsheet", file);
+
+        await axios.post(`${API_URL}/auth/register`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
         setMessage("✅ Registered successfully! Check email for verification.");
         setIsError(false);
         navigate("/verify", { state: { email: form.email } });
@@ -62,7 +74,6 @@ export default function LoginRegister({ isLogin: defaultIsLogin = true }) {
             : "Create an account to start your SafeSpace"}
         </p>
 
-        {/* ALERT BOX */}
         {message && (
           <div
             className={`alert-box ${isError ? "error" : "success"}`}
@@ -74,17 +85,24 @@ export default function LoginRegister({ isLogin: defaultIsLogin = true }) {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {!isLogin && (
-            <div className="form-group">
-              <label>Username</label>
-              <input
-                type="text"
-                name="username"
-                placeholder="Choose a username"
-                value={form.username}
-                onChange={handleChange}
-                required
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label>Username</label>
+                <input
+                  type="text"
+                  name="username"
+                  placeholder="Choose a username"
+                  value={form.username}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Loadsheet (School ID / Document)</label>
+                <input type="file" name="loadsheet" onChange={handleFileChange} />
+              </div>
+            </>
           )}
 
           <div className="form-group">

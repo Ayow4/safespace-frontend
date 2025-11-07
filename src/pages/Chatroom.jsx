@@ -31,13 +31,13 @@ function Chatroom() {
       })
       .then((res) => {
         setUsername(res.data.username);
-        localStorage.setItem("user", res.data.username);
+        localStorage.setItem("user", JSON.stringify(res.data)); // store full user info
 
         if (!socket) {
           socket = io(API_URL);
         }
 
-        socket.emit("setUser", res.data.username);
+        socket.emit("setUser", { userId: res.data._id, username: res.data.username });
 
         // 🔹 Clean old listeners before reattaching
         socket.off("channelList");
@@ -46,7 +46,30 @@ function Chatroom() {
         socket.off("userStatusList");
         socket.off("userStatusUpdate");
 
+
         // SOCKET LISTENERS
+        socket.on("usernameUpdated", ({ oldUsername, newUsername }) => {
+  setMessages((prev) =>
+    prev.map((m) => (m.user === oldUsername ? { ...m, user: newUsername } : m))
+  );
+
+  // Also update userStatuses mapping keys if you use username as key
+  setUserStatuses((prev) => {
+    if (!prev[oldUsername]) return prev;
+    const newEntry = { ...prev[oldUsername] };
+    const { [oldUsername]: _, ...rest } = prev;
+    return { ...rest, [newUsername]: newEntry };
+  });
+
+  // if current user updated name, update username state/localStorage
+  const local = JSON.parse(localStorage.getItem("user") || "null");
+  if (local && local.username === oldUsername) {
+    local.username = newUsername;
+    localStorage.setItem("user", JSON.stringify(local));
+    setUsername(newUsername);
+  }
+});
+
         socket.on("channelList", (updatedChannels) => {
           setChannels(updatedChannels);
           if (!currentChannel && updatedChannels.length > 0) {
@@ -110,20 +133,27 @@ function Chatroom() {
     };
   }, []);
 
+  
+
   // Auto scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = () => {
-    if (!newMessage.trim()) return;
-    socket.emit("sendMessage", {
-      channel: currentChannel,
-      user: username,
-      text: newMessage,
-    });
-    setNewMessage("");
-  };
+  if (!newMessage.trim()) return;
+
+  const currentUser = JSON.parse(localStorage.getItem("user"));
+
+  socket.emit("sendMessage", {
+    channel: currentChannel,
+    user: currentUser.username,
+    avatar: currentUser.avatar || "",
+    text: newMessage,
+  });
+
+  setNewMessage("");
+};
 
   const handleAddChannel = (name) => {
     if (!name.trim()) return;
@@ -140,9 +170,78 @@ function Chatroom() {
     setSidebarOpen(false);
   };
 
+  // ✅ Sync username changes (update messages + socket username)
+useEffect(() => {
+  const handleStorageChange = () => {
+    const updatedUser = JSON.parse(localStorage.getItem("user"));
+    if (updatedUser?.username && updatedUser.username !== username) {
+      const newName = updatedUser.username;
+
+      if (updatedUser?.avatar) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.user === updatedUser.username
+              ? { ...msg, avatar: updatedUser.avatar }
+              : msg
+          )
+        );
+      }
+      
+
+      // ✅ Update username in state
+      setUsername(newName);
+
+      // ✅ Update socket identity
+      if (socket) {
+        socket.emit("setUser", {
+        userId: JSON.parse(localStorage.getItem("user"))._id,
+        username: newName,
+      });
+      }
+
+      // ✅ Update old messages in UI
+      setMessages((prevMessages) =>
+        prevMessages.map((msg) =>
+          msg.user === username ? { ...msg, user: newName } : msg
+        )
+      );
+    }
+  };
+
+  
+
+  window.addEventListener("storage", handleStorageChange);
+
+  
+
+  // Also handle same-tab updates immediately
+  const updatedUser = JSON.parse(localStorage.getItem("user"));
+  if (updatedUser?.username && updatedUser.username !== username) {
+    const newName = updatedUser.username;
+
+    setUsername(newName);
+    if (socket) {
+      socket.emit("setUser", {
+        userId: JSON.parse(localStorage.getItem("user"))._id,
+        username: newName,
+      });
+    }
+
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.user === username ? { ...msg, user: newName } : msg
+      )
+    );
+  }
+
+  return () => window.removeEventListener("storage", handleStorageChange);
+}, [username]);
+
   if (!isReady) {
     return <div className="loading">Loading chatroom...</div>;
   }
+
+  
 
   return (
     <div className="chatroom-container">
@@ -179,9 +278,23 @@ function Chatroom() {
                   key={msg._id || idx}
                   className={`message ${isSelf ? "self" : "other"}`}
                 >
-                  {!isSelf && (
-                    <div className="avatar">{msg.user[0].toUpperCase()}</div>
-                  )}
+                  {isSelf && (
+                        <div className="avatar">
+                          {msg.avatar ? (
+                            <img
+                              src={
+                                msg.avatar.startsWith("http")
+                                  ? msg.avatar
+                                  : `${API_URL}${msg.avatar}`
+                              }
+                              alt="avatar"
+                              className="chat-avatar-img"
+                            />
+                          ) : (
+                            msg.user[0].toUpperCase()
+                          )}
+                        </div>
+                      )}
                   <div className="bubble">
                     {!isSelf && (
                       <div className="username">
@@ -210,8 +323,22 @@ function Chatroom() {
                       })}
                     </div>
                   </div>
-                  {isSelf && (
-                    <div className="avatar">{msg.user[0].toUpperCase()}</div>
+                  {!isSelf && (
+                    <div className="avatar">
+                      {msg.avatar ? (
+                        <img
+                          src={
+                            msg.avatar.startsWith("http")
+                              ? msg.avatar
+                              : `${API_URL}${msg.avatar}`
+                          }
+                          alt="avatar"
+                          className="chat-avatar-img"
+                        />
+                      ) : (
+                        msg.user[0].toUpperCase()
+                      )}
+                    </div>
                   )}
                 </div>
               );
