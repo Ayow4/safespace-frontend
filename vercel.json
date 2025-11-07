@@ -11,6 +11,13 @@
     "VITE_API_URL": "https://safespace-backend-3q00.onrender.com/api"
   },
   "routes": [
-    { "src": "/(.*)", "dest": "/" }
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
