@@ -1,7 +1,6 @@
-// src/pages/AdminDashboard.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Tv, Ban, AlertTriangle, StampIcon } from "lucide-react";
+import { Users, Tv, Ban, AlertTriangle, StampIcon, X, Menu } from "lucide-react";
 import ManageUsers from "../components/admin/ManageUsers";
 import ManageChannels from "../components/admin/ManageChannels";
 import ManageBannedWords from "../components/admin/ManageBannedWords";
@@ -12,6 +11,7 @@ import "../styles/Admin.css";
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("users");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -21,7 +21,21 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-container">
-      <aside className="admin-sidebar">
+      {/* Mobile Menu Button */}
+      <button
+        className="menu-toggle"
+        onClick={() => setSidebarOpen(true)}
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* Sidebar */}
+      <aside className={`admin-sidebar ${sidebarOpen ? "open" : ""}`}>
+        {/* Close Button for mobile */}
+        <button className="close-sidebar-btn" onClick={() => setSidebarOpen(false)}>
+          <X size={20} />
+        </button>
+
         <h2>⚙️ Admin Panel</h2>
         <ul>
           <li className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}>
@@ -39,19 +53,20 @@ export default function AdminDashboard() {
           <li className={activeTab === "reports" ? "active" : ""} onClick={() => setActiveTab("reports")}>
             <AlertTriangle size={18} /> Reports
           </li>
-          
         </ul>
 
-        <button onClick={handleLogout} className="logout-btn">Logout</button>
+        <button onClick={handleLogout} className="logout-btn">
+          Logout
+        </button>
       </aside>
 
-      <main className="admin-main">
+      {/* Main Content */}
+      <main className="admin-main" onClick={() => sidebarOpen && setSidebarOpen(false)}>
         {activeTab === "users" && <ManageUsers />}
         {activeTab === "channels" && <ManageChannels />}
         {activeTab === "banned" && <ManageBannedWords />}
         {activeTab === "reports" && <ManageReports />}
         {activeTab === "approval" && <ManageApproval />}
-          
       </main>
     </div>
   );
